@@ -1,12 +1,14 @@
 import requests
 #import praw
 #from bs4 import BeautifulSoup
+import streamlit as st
 import openai
+import requests
 
-# === CONFIGURATION ===
-SERPAPI_KEY = "fdff81292ea5463e1b28cc1a215cb1b945eff54ba61c018c3b8db5f37621b25b"
-OPENAI_API_KEY = "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"
+SERPAPI_KEY = st.secrets["fdff81292ea5463e1b28cc1a215cb1b945eff54ba61c018c3b8db5f37621b25b"]
+OPENAI_API_KEY = st.secrets["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"]
 
+openai.api_key = OPENAI_API_KEY
 # === GOOGLE FAQ FETCH ===
 def fetch_google_faqs(keyword):
     params = {
