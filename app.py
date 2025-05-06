@@ -59,7 +59,7 @@ if top_urls:
 else:
     st.info("No URLs found in search results.")
         
-        # === Export FAQs to CSV ===
+         # === Export FAQs to CSV ===
         all_faqs = google_faqs + chatgpt_faqs
         if all_faqs:
             df = pd.DataFrame(all_faqs, columns=["FAQ"])
