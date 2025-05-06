@@ -8,19 +8,39 @@ OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
 
 # === GOOGLE FAQ FETCH ===
-def fetch_google_faqs(keyword):
+def fetch_google_data(keyword):
     params = {
         "engine": "google",
         "q": keyword,
-        "api_key": SERPAPI_KEY
+        "api_key": SERPAPI_KEY,
+        "gl": "us",  # country
+        "hl": "en",  # language
+        "location": "United States"
     }
     response = requests.get("https://serpapi.com/search", params=params)
     data = response.json()
+
+    # FAQs
     faqs = []
     if 'related_questions' in data:
         for q in data['related_questions']:
             faqs.append(q.get('question'))
-    return faqs
+
+    # People Also Search For
+    related_keywords = []
+    if 'related_searches' in data:
+        for r in data['related_searches']:
+            related_keywords.append(r.get('query'))
+
+    # Top URLs
+    top_urls = []
+    if 'organic_results' in data:
+        for result in data['organic_results'][:5]:
+            title = result.get('title')
+            link = result.get('link')
+            top_urls.append(f"{title} – {link}")
+
+    return faqs, related_keywords, top_urls
 
 # === CHATGPT FAQ FETCH ===
 def fetch_chatgpt_faqs(keyword):
