@@ -1,13 +1,12 @@
-import requests
-#import praw
-#from bs4 import BeautifulSoup
 import streamlit as st
 import openai
 import requests
 
+# === Load API Keys from Streamlit Secrets ===
 SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
+
 # === GOOGLE FAQ FETCH ===
 def fetch_google_faqs(keyword):
     params = {
@@ -23,39 +22,24 @@ def fetch_google_faqs(keyword):
             faqs.append(q.get('question'))
     return faqs
 
-
-# === CHATGPT FAQ GENERATION ===
-import openai
-
-# Replace "YOUR_OPENAI_API_KEY" with your actual OpenAI API key
-openai.api_key = OPENAI_API_KEY
-
+# === CHATGPT FAQ FETCH ===
 def fetch_chatgpt_faqs(keyword):
-    prompt = f"Generate a list of 10 frequently asked questions about '{keyword}'."
+    try:
+        prompt = f"Generate a list of 10 frequently asked questions about '{keyword}'."
 
-    response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5,
-        max_tokens=300
-    )
-    # Extract the FAQs from the response
-    faqs = response.choices[0].message.content.split('\n')
-    # Remove any leading/trailing whitespace and bullet points
-    faqs = [q.strip().lstrip('-• ') for q in faqs if q.strip()]
-    return faqs  # Return the extracted FAQs
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=300
+        )
 
+        content = response.choices[0].message.content
+        faqs = [q.strip("•- ").strip() for q in content.strip().split("\n") if q.strip()]
+        return faqs
 
-# === MAIN ===
-if __name__ == "__main__":
-    keyword = input("Enter keyword: ")
-
-    print("\n--- Google FAQs ---")
-    for q in fetch_google_faqs(keyword):
-        print("•", q)
-
-    print("\n--- ChatGPT-Generated FAQs ---")
-    for q in fetch_chatgpt_faqs(keyword):
-        print("•", q)
+    except Exception as e:
+        st.error(f"❌ ChatGPT FAQ error: {str(e)}")
+        return []
