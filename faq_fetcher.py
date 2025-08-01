@@ -1,65 +1,64 @@
-import streamlit as st
-import openai
 import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+from collections import defaultdict
+import pandas as pd
 
-# === Load API Keys from Streamlit Secrets ===
-SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-openai.api_key = OPENAI_API_KEY
+def fetch_urls_from_sitemap(sitemap_url):
+    response = requests.get(sitemap_url)
+    soup = BeautifulSoup(response.text, "xml")
+    urls = [loc.text for loc in soup.find_all("loc")]
+    return urls
 
-# === GOOGLE FAQ FETCH ===
-def fetch_google_data(keyword):
-    params = {
-        "engine": "google",
-        "q": keyword,
-        "api_key": SERPAPI_KEY,
-        "gl": "us",  # country
-        "hl": "en",  # language
-        "location": "United States"
-    }
-    response = requests.get("https://serpapi.com/search", params=params)
-    data = response.json()
-
-    # FAQs
-    faqs = []
-    if 'related_questions' in data:
-        for q in data['related_questions']:
-            faqs.append(q.get('question'))
-
-    # People Also Search For
-    related_keywords = []
-    if 'related_searches' in data:
-        for r in data['related_searches']:
-            related_keywords.append(r.get('query'))
-
-    # Top URLs
-    top_urls = []
-    if 'organic_results' in data:
-        for result in data['organic_results'][:5]:
-            title = result.get('title')
-            link = result.get('link')
-            top_urls.append(f"{title} – {link}")
-
-    return faqs, related_keywords, top_urls
-
-# === CHATGPT FAQ FETCH ===
-def fetch_chatgpt_faqs(keyword):
+def fetch_page_snippet(url):
     try:
-        prompt = f"Generate a list of 10 frequently asked questions about '{keyword}'."
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.content, "html.parser")
+        paragraphs = soup.find_all("p")
+        snippet = " ".join([p.get_text() for p in paragraphs[:5]])
+        return snippet.strip()
+    except Exception:
+        return ""
 
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5,
-            max_tokens=300
-        )
+def generate_internal_link_suggestions(pages_data):
+    suggestions = []
+    for i, page in enumerate(pages_data):
+        page_url = page["url"]
+        page_content = page["content"].lower()
 
-        content = response.choices[0].message.content
-        faqs = [q.strip("•- ").strip() for q in content.strip().split("\n") if q.strip()]
-        return faqs
+        for j, other_page in enumerate(pages_data):
+            if i != j:
+                other_url = other_page["url"]
+                other_content = other_page["content"].lower()
+                words = set(page_content.split()) & set(other_content.split())
+                if len(words) > 10:  # shared words threshold
+                    suggestions.append({
+                        "Source Page": page_url,
+                        "Suggested Link": other_url,
+                        "Shared Terms": ", ".join(list(words)[:5])
+                    })
+    return pd.DataFrame(suggestions)
 
-    except Exception as e:
-        st.error(f"❌ ChatGPT FAQ error: {str(e)}")
-        return []
+def fetch_reddit_questions(keyword):
+    search_url = f"https://www.reddit.com/search/?q={keyword}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(search_url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+    questions = set()
+    for h in soup.find_all("h3"):
+        text = h.get_text(strip=True)
+        if "?" in text and 10 < len(text) < 150:
+            questions.add(text)
+    return list(questions)[:10]
+
+def fetch_quora_questions(keyword):
+    search_url = f"https://www.quora.com/search?q={keyword.replace(' ', '%20')}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(search_url, headers=headers)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    faqs = []
+    for a in soup.find_all("a", href=True):
+        text = a.get_text(strip=True)
+        if "?" in text and len(text) < 100:
+            faqs.append(text)
+    return list(set(faqs))[:10]
