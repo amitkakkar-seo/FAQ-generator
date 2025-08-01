@@ -1,16 +1,13 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
 import openai
-
-from link_suggester import (
+from faq_fetcher import (
     fetch_google_faqs,
     fetch_chatgpt_faqs,
     fetch_reddit_questions,
     fetch_quora_questions
 )
 
-# === CONFIGURATION ===
+# === Load API Keys from Streamlit Secrets ===
 SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
@@ -19,13 +16,13 @@ st.set_page_config(page_title="AI FAQ Generator", layout="centered")
 
 # --- Branding UI ---
 st.markdown(
-    """
+    '''
     <div style='text-align: center; padding: 1rem;'>
         <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png' width='60'/>
         <h2>FAQ Finder AI 🔍</h2>
         <p style='color:gray;'>Get real questions people ask on Google, ChatGPT, Reddit, and Quora.</p>
     </div>
-    """,
+    ''',
     unsafe_allow_html=True
 )
 
@@ -57,11 +54,11 @@ if keyword:
 
 # --- Footer ---
 st.markdown(
-    """
+    '''
     <hr>
     <div style='text-align: center; color: gray;'>
         Built with ❤️ by YourName • © 2025
     </div>
-    """,
+    ''',
     unsafe_allow_html=True
 )
