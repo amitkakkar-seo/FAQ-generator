@@ -7,30 +7,31 @@ from faq_fetcher import (
     fetch_quora_questions
 )
 
-# === Load API Keys from Streamlit Secrets ===
-SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+# Load API Keys from Streamlit Secrets
+SERPAPI_KEY = st.secrets["fdff81292ea5463e1b28cc1a215cb1b945eff54ba61c018c3b8db5f37621b25b"]
+OPENAI_API_KEY = st.secrets["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"]
+openai.api_key = OPENAI_API_KEY
 openai.api_key = OPENAI_API_KEY
 
-st.set_page_config(page_title="AI FAQ Generator", layout="centered")
+st.set_page_config(page_title="FAQ Finder AI", layout="centered")
 
-# --- Branding UI ---
+# --- UI Header ---
 st.markdown(
     '''
     <div style='text-align: center; padding: 1rem;'>
         <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png' width='60'/>
-        <h2>FAQ Finder AI 🔍</h2>
-        <p style='color:gray;'>Get real questions people ask on Google, ChatGPT, Reddit, and Quora.</p>
+        <h2 style='margin-bottom:0;'>FAQ Finder AI 🔍</h2>
+        <p style='color:gray;'>Find real questions people ask on Google, ChatGPT, Reddit, and Quora.</p>
     </div>
     ''',
     unsafe_allow_html=True
 )
 
-# --- Keyword Input ---
+# --- Input ---
 keyword = st.text_input("Enter a topic or keyword")
 
 if keyword:
-    with st.spinner("Fetching FAQs..."):
+    with st.spinner("Fetching questions..."):
         google_faqs = fetch_google_faqs(keyword, SERPAPI_KEY)
         chatgpt_faqs = fetch_chatgpt_faqs(keyword)
         reddit_faqs = fetch_reddit_questions(keyword)
@@ -56,7 +57,7 @@ if keyword:
 st.markdown(
     '''
     <hr>
-    <div style='text-align: center; color: gray;'>
+    <div style='text-align: center; color: gray; font-size: 14px;'>
         Built with ❤️ by YourName • © 2025
     </div>
     ''',
