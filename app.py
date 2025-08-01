@@ -1,94 +1,81 @@
 import streamlit as st
 import pandas as pd
-from faq_fetcher import fetch_google_data, fetch_chatgpt_faqs
+from link_suggester import (
+    fetch_urls_from_sitemap,
+    fetch_page_snippet,
+    generate_internal_link_suggestions,
+    fetch_reddit_questions,
+    fetch_quora_questions
+)
 
-# === SaaS-style Layout ===
-st.set_page_config(page_title="FAQ Generator • Growthner", layout="wide")
+st.set_page_config(page_title="Internal Linking Assistant • Growthner", layout="wide")
 
 st.markdown("""
     <style>
-        html, body, [class*="css"] {
-            font-family: 'Segoe UI', sans-serif;
-        }
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-        }
-        .section {
-            background-color: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .section h3 {
-            margin-top: 0;
-            margin-bottom: 0.8rem;
-        }
-        .download-button {
-            margin-top: 1.2rem;
-        }
+        .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+        .footer { text-align: center; font-size: 14px; color: gray; margin-top: 3rem; }
+        .section { padding: 1.5rem; background: #ffffff; border: 1px solid #e6e6e6; border-radius: 12px; margin-bottom: 2rem; }
+        .main-header { text-align: center; margin-bottom: 2rem; }
+        .main-header h1 { font-size: 2.8rem; margin-bottom: 0.5rem; }
+        .main-header p { font-size: 1.2rem; color: #666; }
+        .logo { height: 60px; margin-bottom: 10px; }
+        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# === Branding Header ===
-st.markdown("<h1 style='text-align: center;'>🚀 Growthner FAQ Generator</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 18px; color: gray;'>Generate SEO FAQs, related searches, and SERP data in seconds.</p>", unsafe_allow_html=True)
-st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("""
+    <div class="main-header">
+        <img src="https://growthner.com/logo.png" class="logo">
+        <h1>🔗 Internal Linking Assistant</h1>
+        <p>Suggesting smart internal links from your sitemap content and related Reddit/Quora questions.</p>
+    </div>
+""", unsafe_allow_html=True)
 
-# === Keyword Input ===
-keyword = st.text_input("🔍 Enter a keyword", placeholder="e.g. Cloud GPUs for AI")
+with st.container():
+    st.markdown("### 🔍 Step 1: Enter your sitemap URL and keyword")
+    sitemap_url = st.text_input("Sitemap URL", placeholder="https://example.com/sitemap.xml")
+    keyword = st.text_input("Keyword (for Reddit & Quora)", placeholder="content marketing tips")
 
-if st.button("Generate Insights", type="primary"):
-    if not keyword.strip():
-        st.warning("Please enter a keyword to continue.")
-    else:
-        with st.spinner("Collecting real-time data..."):
-            google_faqs, related_keywords, top_urls = fetch_google_data(keyword)
-            chatgpt_faqs = fetch_chatgpt_faqs(keyword)
+    st.markdown("### 🛠️ Step 2: Choose number of pages to analyze")
+    limit = st.slider("Pages to scan", min_value=5, max_value=50, value=10, step=5)
 
-        # === Google FAQs Section ===
-        st.markdown("<div class='section'>", unsafe_allow_html=True)
-        st.markdown("<h3>🌐 Google FAQs (People Also Ask)</h3>", unsafe_allow_html=True)
-        if google_faqs:
-            for q in google_faqs:
-                st.markdown(f"• {q}")
+    if st.button("🚀 Generate Insights"):
+        if not sitemap_url or not keyword:
+            st.warning("⚠️ Please enter both sitemap URL and keyword.")
         else:
-            st.info("No FAQs found.")
-        st.markdown("</div>", unsafe_allow_html=True)
+            with st.spinner("Analyzing sitemap and scraping questions..."):
+                try:
+                    urls = fetch_urls_from_sitemap(sitemap_url)
+                    pages_data = []
+                    for url in urls[:limit]:
+                        content = fetch_page_snippet(url)
+                        if content.strip() and len(content.split()) > 5:
+                            pages_data.append({"url": url, "content": content})
 
-        # === Related Keywords Section ===
-        st.markdown("<div class='section'>", unsafe_allow_html=True)
-        st.markdown("<h3>🔁 People Also Search For</h3>", unsafe_allow_html=True)
-        if related_keywords:
-            for kw in related_keywords:
-                st.markdown(f"• {kw}")
-        else:
-            st.info("No related keywords found.")
-        st.markdown("</div>", unsafe_allow_html=True)
+                    df = generate_internal_link_suggestions(pages_data)
 
-        # === Top URLs Section ===
-        st.markdown("<div class='section'>", unsafe_allow_html=True)
-        st.markdown("<h3>🔗 Top Ranking Pages (US)</h3>", unsafe_allow_html=True)
-        if top_urls:
-            for url in top_urls:
-                st.markdown(f"{url}")
-        else:
-            st.info("No URLs found.")
-        st.markdown("</div>", unsafe_allow_html=True)
+                    reddit_qs = fetch_reddit_questions(keyword)
+                    quora_qs = fetch_quora_questions(keyword)
 
-        # === ChatGPT FAQs Section ===
-        st.markdown("<div class='section'>", unsafe_allow_html=True)
-        st.markdown("<h3>🤖 ChatGPT-Generated FAQs</h3>", unsafe_allow_html=True)
-        if chatgpt_faqs:
-            for q in chatgpt_faqs:
-                st.markdown(f"• {q}")
-        else:
-            st.info("No FAQs generated.")
-        st.markdown("</div>", unsafe_allow_html=True)
+                    st.success("✅ All data generated!")
 
-        # === Download CSV Button ===
-        all_faqs = google_faqs + chatgpt_faqs
-        if all_faqs:
-            df = pd.DataFrame(all_faqs, columns=["FAQ"])
-            st.download_button("⬇️ Download FAQs as CSV", df.to_csv(index=False), "faqs.csv", "text/csv", key="download_faqs")
+                    st.markdown("### 📄 Internal Link Suggestions")
+                    st.dataframe(df, use_container_width=True)
+                    st.download_button("⬇️ Download CSV", df.to_csv(index=False), "internal_link_suggestions.csv", "text/csv")
+
+                    st.markdown("### 🧠 Reddit Questions")
+                    for q in reddit_qs:
+                        st.write("•", q)
+
+                    st.markdown("### ❓ Quora Questions")
+                    for q in quora_qs:
+                        st.write("•", q)
+
+                except Exception as e:
+                    st.error(f"Something went wrong: {e}")
+
+st.markdown("""
+    <div class='footer'>
+        Made with ❤️ by <a href='https://www.linkedin.com/in/amitkakkarseo/' target='_blank'>Amit Kakkar</a> | © 2025 Growthner
+    </div>
+""", unsafe_allow_html=True)
