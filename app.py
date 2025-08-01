@@ -8,8 +8,8 @@ from faq_fetcher import (
 )
 
 # Load API Keys from Streamlit Secrets
-SERPAPI_KEY = st.secrets["fdff81292ea5463e1b28cc1a215cb1b945eff54ba61c018c3b8db5f37621b25b"]
-OPENAI_API_KEY = st.secrets["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"]
+SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
 openai.api_key = OPENAI_API_KEY
 
