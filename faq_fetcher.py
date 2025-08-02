@@ -1,38 +1,31 @@
 import requests
 import openai
+from bs4 import BeautifulSoup
 import streamlit as st
 
-# === API Keys from Streamlit secrets ===
 SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
 
-# === GOOGLE FAQ FETCH ===
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
+
 def fetch_google_faqs(keyword):
-    try:
-        params = {
-            "engine": "google",
-            "q": keyword,
-            "api_key": SERPAPI_KEY,
-            "location": "United States",
-            "num": "20"
-        }
-        response = requests.get("https://serpapi.com/search", params=params)
-        data = response.json()
-        faqs = []
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "google",
+        "q": keyword,
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    faqs = []
+    if "related_questions" in data:
+        faqs = [q.get("question") for q in data["related_questions"] if q.get("question")]
+    return faqs
 
-        if "related_questions" in data:
-            for q in data["related_questions"]:
-                question = q.get("question")
-                if question:
-                    faqs.append(question)
-        return faqs
-
-    except Exception as e:
-        st.error(f"❌ Google FAQ Error: {str(e)}")
-        return []
-
-# === CHATGPT FAQ GENERATION ===
 def fetch_chatgpt_faqs(keyword):
     try:
         prompt = f"Generate a list of 10 frequently asked questions about '{keyword}'."
@@ -43,107 +36,75 @@ def fetch_chatgpt_faqs(keyword):
             max_tokens=300
         )
         content = response.choices[0].message.content
-        faqs = [q.strip("•- ").strip() for q in content.strip().split("\n") if q.strip()]
-        return faqs
+        return [q.strip("•- ").strip() for q in content.strip().split("\n") if q.strip()]
     except Exception as e:
         st.error(f"❌ ChatGPT Error: {str(e)}")
         return []
 
-# === FETCH REDDIT & QUORA THREADS ===
-def fetch_reddit_quora_threads(keyword):
+def fetch_quora_faqs(keyword):
+    search_url = f"https://www.quora.com/search?q={keyword.replace(' ', '+')}"
     try:
-        params = {
-            "engine": "google",
-            "q": keyword,
-            "api_key": SERPAPI_KEY,
-            "location": "United States",
-            "num": "20"
-        }
-        response = requests.get("https://serpapi.com/search", params=params)
-        data = response.json()
-
-        reddit_links = []
-        quora_links = []
-
-        for result in data.get("organic_results", []):
-            link = result.get("link", "")
-            title = result.get("title", "")
-            if "reddit.com" in link:
-                reddit_links.append({"title": title, "link": link})
-            elif "quora.com" in link:
-                quora_links.append({"title": title, "link": link})
-
-        return reddit_links, quora_links
-
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        links = [a.get("href") for a in soup.find_all("a", href=True)]
+        threads = [f"https://www.quora.com{link}" for link in links if "/What" in link or "/Why" in link or "/How" in link]
+        return list(set(threads))[:5]
     except Exception as e:
-        st.error(f"❌ Reddit/Quora Error: {str(e)}")
-        return [], []
-# === Function to get long-tail and LSI keywords from SerpAPI ===
-def fetch_related_keywords(keyword, serpapi_key):
+        st.error(f"❌ Quora Error: {str(e)}")
+        return []
+
+def fetch_reddit_faqs(keyword):
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "google",
+        "q": f"site:reddit.com {keyword}",
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    faqs = []
+    for result in data.get("organic_results", []):
+        link = result.get("link")
+        title = result.get("title")
+        if "reddit.com" in link:
+            faqs.append(f"{title} — {link}")
+    return faqs
+
+def fetch_ai_overview(keyword):
     url = "https://serpapi.com/search"
     params = {
         "engine": "google",
         "q": keyword,
-        "api_key": serpapi_key,
-        "hl": "en",
-        "gl": "us"
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
     }
-
     response = requests.get(url, params=params)
     data = response.json()
+    overview = []
+    if "answer_box" in data:
+        overview.append(data["answer_box"].get("answer") or data["answer_box"].get("snippet"))
+    if "organic_results" in data:
+        for item in data["organic_results"]:
+            snippet = item.get("snippet")
+            if snippet and snippet not in overview:
+                overview.append(snippet)
+    return overview[:5]
 
-    long_tail_keywords = []
-    lsi_keywords = []
-
-    # Extract from 'related_searches'
-    if 'related_searches' in data:
-        for item in data['related_searches']:
-            term = item.get("query")
-            if term:
-                if len(term.split()) >= 3:
-                    long_tail_keywords.append(term)
-                else:
-                    lsi_keywords.append(term)
-
-    return long_tail_keywords, lsi_keywords
-
-# === Streamlit UI ===
-st.set_page_config(page_title="Keyword Insights Tool", layout="centered", initial_sidebar_state="collapsed")
-st.markdown("""
-    <style>
-        body {
-            background-color: #0d1117;
-            color: white;
-        }
-        .css-1d391kg {color: white;}
-        .stTextInput>div>div>input {
-            background-color: #161b22;
-            color: white;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-st.title("🔑 Long-Tail & LSI Keyword Suggestion Tool")
-st.write("Get content ideas based on real Google searches.")
-
-# Get secret from Streamlit cloud or local environment
-SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
-keyword = st.text_input("Enter a keyword:")
-
-if keyword:
-    with st.spinner("Fetching keyword suggestions..."):
-        long_tail, lsi = fetch_related_keywords(keyword, SERPAPI_KEY)
-
-    st.subheader("📌 Long-Tail Keywords")
-    if long_tail:
-        for kw in long_tail:
-            st.markdown(f"• {kw}")
-    else:
-        st.write("No long-tail keywords found.")
-
-    st.subheader("🔍 LSI Keywords")
-    if lsi:
-        for kw in lsi:
-            st.markdown(f"• {kw}")
-    else:
-        st.write("No LSI keywords found.")
+def fetch_related_keywords(keyword):
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "google",
+        "q": keyword,
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    long_tail = []
+    lsi = []
+    if "related_searches" in data:
+        long_tail = [s.get("query") for s in data["related_searches"] if s.get("query")]
+    if "people_also_search_for" in data:
+        lsi = [s.get("query") for s in data["people_also_search_for"] if s.get("query")]
+    return long_tail[:5], lsi[:5]
