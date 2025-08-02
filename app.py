@@ -8,41 +8,51 @@ from faq_fetcher import (
     fetch_related_keywords
 )
 
-st.set_page_config(page_title="FAQ & Keyword Explorer", layout="wide")
-
-st.markdown(
-    """
-    <style>
-    body {
-        background-color: #0d1117;
-        color: white;
-    }
-    .stApp {
-        background-color: #0d1117;
-        color: white;
-    }
-    .stTextInput > div > div > input {
-        background-color: #161b22;
-        color: white;
-        border: 1px solid #30363d;
-    }
-    .stButton > button {
-        background-color: #238636;
-        color: white;
-        border-radius: 5px;
-    }
-    .stMarkdown {
-        color: white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
+# ==== PAGE SETUP ====
+st.set_page_config(
+    page_title="FAQ & Keyword Explorer",
+    page_icon="📊",
+    layout="wide"
 )
 
-st.markdown("# 🔎 FAQ & Keyword Explorer")
-st.caption("Built for SEO & content strategy teams")
+# ==== DARK MODE THEME + STYLING ====
+st.markdown("""
+    <style>
+        body, .stApp {
+            background-color: #121212;
+            color: white;
+        }
+        .block-container {
+            padding: 2rem;
+        }
+        h1, h2, h3, h4, h5 {
+            color: white;
+        }
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #1f1f1f;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 13px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #fbbf24;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-keyword = st.text_input("Enter your keyword")
+# ==== HEADER ====
+st.markdown('<div class="logo">🔍 FAQ & Keyword Explorer</div>', unsafe_allow_html=True)
+
+# ==== MAIN ====
+keyword = st.text_input("Enter a keyword to analyze:", "AI image generation")
 
 if keyword:
     col1, col2 = st.columns(2)
@@ -50,30 +60,45 @@ if keyword:
     with col1:
         st.subheader("📌 Google FAQs")
         for q in fetch_google_faqs(keyword):
-            st.markdown(f"• {q}")
+            st.markdown(f"- {q}")
 
-        st.subheader("💬 Quora Threads")
-        for q in fetch_quora_faqs(keyword):
-            st.markdown(f"• [{q}]({q})")
+        st.subheader("🧠 ChatGPT FAQs")
+        for q in fetch_chatgpt_faqs(keyword):
+            st.markdown(f"- {q}")
 
-        st.subheader("👥 Reddit Threads")
-        for q in fetch_reddit_faqs(keyword):
-            st.markdown(f"• {q}")
+        st.subheader("📚 AI Overview (SGE)")
+        for item in fetch_ai_overview(keyword):
+            st.markdown(f"- {item}")
 
     with col2:
-        st.subheader("🤖 ChatGPT FAQs")
-        for q in fetch_chatgpt_faqs(keyword):
-            st.markdown(f"• {q}")
+        st.subheader("💬 Reddit & Quora Threads")
+        reddit = fetch_reddit_faqs(keyword)
+        quora = fetch_quora_faqs(keyword)
 
-        st.subheader("🧠 AI Overview")
-        for q in fetch_ai_overview(keyword):
-            st.markdown(f"• {q}")
+        if reddit:
+            st.markdown("**Reddit:**")
+            for r in reddit:
+                st.markdown(f"- {r}")
+
+        if quora:
+            st.markdown("**Quora:**")
+            for q in quora:
+                st.markdown(f"- {q}")
 
         st.subheader("🔑 Keyword Suggestions")
-        long_tail, lsi = fetch_related_keywords(keyword)
-        st.markdown("**Long-tail Keywords**")
-        for q in long_tail:
-            st.markdown(f"• {q}")
-        st.markdown("**LSI Keywords**")
-        for q in lsi:
-            st.markdown(f"• {q}")
+        keyword_data = fetch_related_keywords(keyword)
+
+        if keyword_data:
+            st.markdown("**Short-tail Keywords:**")
+            for kw in keyword_data["short_tail_keywords"]:
+                st.markdown(f"- {kw}")
+            st.markdown("**Long-tail / LSI Keywords:**")
+            for kw in keyword_data["long_tail_keywords"]:
+                st.markdown(f"- {kw}")
+
+# ==== FOOTER ====
+st.markdown("""
+    <div class="footer">
+        🚀 Built with ❤️ by YourName | Streamlit SaaS App
+    </div>
+""", unsafe_allow_html=True)
