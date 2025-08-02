@@ -5,30 +5,25 @@ from faq_fetcher import (
     fetch_reddit_quora_threads
 )
 
-# Configure the page
 st.set_page_config(page_title="FAQ Intelligence Tool", page_icon="🧠", layout="wide")
 
-# --- Custom CSS for Dark SaaS Theme with High Readability ---
+# === Custom CSS for Dark Theme with White Text ===
 st.markdown("""
 <style>
-body {
-    background-color: #121212;
-    color: #e0e0e0;
+body, html, .block-container {
+    background-color: #121212 !important;
+    color: white !important;
     font-family: 'Segoe UI', sans-serif;
 }
-.sidebar .sidebar-content {
-    background-color: #1f1f1f;
-    color: #e0e0e0;
-}
-h1, h2, h3, h4 {
-    color: #ffffff;
-    font-weight: 600;
+h1, h2, h3, h4, h5, h6, p, li, div, span, label {
+    color: white !important;
 }
 .section-box {
     background-color: #1f1f1f;
     padding: 1.2rem;
     border-radius: 10px;
     margin-bottom: 1rem;
+    color: white;
     box-shadow: 0 0 4px rgba(255, 255, 255, 0.05);
 }
 a {
@@ -39,12 +34,12 @@ a:hover {
 }
 .stTextInput > div > div > input {
     background-color: #1e1e1e;
-    color: #ffffff;
+    color: white;
     border: 1px solid #555;
 }
 footer {
     text-align: center;
-    color: #888;
+    color: #bbb;
     font-size: 0.85rem;
     margin-top: 2rem;
 }
@@ -55,24 +50,24 @@ footer {
 with st.sidebar:
     st.image("https://yourdomain.com/logo.png", width=160)
     st.markdown("### 🔍 How to Use")
-    st.markdown("1. Enter a keyword\n2. Explore FAQs from Google, ChatGPT, Reddit, and Quora\n3. Use them in your content, product, or SEO strategy.")
+    st.markdown("1. Enter a keyword\n2. Get FAQs from Google, ChatGPT, Reddit, and Quora\n3. Apply them in SEO, content, or product research.")
     st.markdown("---")
-    st.markdown("Built by [YourBrand.com](https://yourbrand.com)")
+    st.markdown("Built by [YourBrand](https://yourbrand.com)")
 
 # Header
 st.markdown("<h1 style='text-align:center;'>🧠 FAQ Intelligence Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Discover high-intent questions & threads from search engines, AI, Reddit, and Quora</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Uncover user questions and search threads from top platforms</p>", unsafe_allow_html=True)
 
-# --- Keyword input ---
-keyword = st.text_input("Enter a keyword:", placeholder="e.g. best AI content detection tool")
+# Keyword input
+keyword = st.text_input("Enter a keyword:", placeholder="e.g. best AI copywriting tools")
 
 if keyword:
-    with st.spinner("🔍 Fetching FAQs and Threads..."):
+    with st.spinner("🔍 Fetching results..."):
         google_faqs = fetch_google_faqs(keyword)
         chatgpt_faqs = fetch_chatgpt_faqs(keyword)
         reddit_links, quora_links = fetch_reddit_quora_threads(keyword)
 
-    tab1, tab2, tab3 = st.tabs(["📌 Google FAQs", "🤖 ChatGPT FAQs", "💬 Reddit + Quora Threads"])
+    tab1, tab2, tab3 = st.tabs(["📌 Google FAQs", "🤖 ChatGPT FAQs", "💬 Reddit + Quora"])
 
     with tab1:
         st.markdown("### People Also Ask (Google)")
