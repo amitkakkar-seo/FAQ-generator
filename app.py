@@ -5,58 +5,102 @@ from faq_fetcher import (
     fetch_reddit_quora_threads
 )
 
-st.set_page_config(page_title="FAQ Extractor & SERP Analyzer", page_icon="📚", layout="wide")
+# --- Streamlit Config ---
+st.set_page_config(
+    page_title="FAQ Intelligence",
+    page_icon="🧠",
+    layout="wide"
+)
 
-# === Header ===
-st.markdown("<h1 style='text-align: center;'>📚 FAQ Extractor & SERP Analyzer</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Generate FAQs and view Reddit & Quora threads ranking in Google.</p>", unsafe_allow_html=True)
+# --- Custom CSS for Dark SaaS UI ---
+st.markdown("""
+    <style>
+    body, .stApp {
+        background-color: #0f1117;
+        color: #f1f1f1;
+        font-family: 'Segoe UI', sans-serif;
+    }
 
-# === Keyword Input ===
-keyword = st.text_input("🔍 Enter a keyword", placeholder="e.g., AI for Education")
+    h1, h2, h3, h4, h5 {
+        color: #fdfdfd;
+        font-weight: 700;
+    }
+
+    .stTextInput > div > div > input {
+        background-color: #1e1f26;
+        color: #f1f1f1;
+        border: 1px solid #3a3b3f;
+        padding: 0.6em;
+    }
+
+    .stTextInput input:focus {
+        border-color: #9b5de5;
+        box-shadow: 0 0 0 0.1rem #9b5de5;
+    }
+
+    .stMarkdown {
+        padding: 1em;
+        border-radius: 8px;
+        background: #1e1f26;
+        margin-bottom: 1em;
+    }
+
+    footer {
+        color: #777;
+        font-size: 0.9em;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Title ---
+st.markdown("<h1 style='text-align:center;'>🧠 FAQ Intelligence Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;color:#ccc;'>Extract FAQs + Reddit/Quora threads directly from SERPs for smarter content strategy</p>", unsafe_allow_html=True)
+
+# --- Input ---
+keyword = st.text_input("🔍 Enter a keyword to analyze:", placeholder="e.g., Cloud GPUs for LLMs")
 
 if keyword:
-    st.info("🔄 Fetching data, please wait...")
+    with st.spinner("🔄 Fetching SERP data..."):
+        google_faqs = fetch_google_faqs(keyword)
+        chatgpt_faqs = fetch_chatgpt_faqs(keyword)
+        reddit_links, quora_links = fetch_reddit_quora_threads(keyword)
 
-    # Google FAQs
-    google_faqs = fetch_google_faqs(keyword)
+    st.markdown("### 📌 Google: People Also Ask")
     if google_faqs:
-        st.subheader("🔎 People Also Ask (Google FAQs)")
         for faq in google_faqs:
-            st.markdown(f"- {faq}")
+            st.markdown(f"🔹 {faq}")
     else:
         st.warning("No Google FAQs found.")
 
-    # ChatGPT FAQs
-    chatgpt_faqs = fetch_chatgpt_faqs(keyword)
+    st.markdown("### 🤖 ChatGPT-Generated FAQs")
     if chatgpt_faqs:
-        st.subheader("🤖 ChatGPT-Generated FAQs")
         for faq in chatgpt_faqs:
-            st.markdown(f"- {faq}")
+            st.markdown(f"🔹 {faq}")
     else:
         st.warning("No ChatGPT FAQs generated.")
 
-    # Reddit & Quora from Google
-    reddit_links, quora_links = fetch_reddit_quora_threads(keyword)
-
+    st.markdown("### 🔗 Reddit Threads Ranking in Google")
     if reddit_links:
-        st.subheader("📌 Reddit Threads Ranking on Google")
         for item in reddit_links:
             st.markdown(f"- [{item['title']}]({item['link']})")
     else:
         st.info("No Reddit results found.")
 
+    st.markdown("### 🔗 Quora Threads Ranking in Google")
     if quora_links:
-        st.subheader("📌 Quora Threads Ranking on Google")
         for item in quora_links:
             st.markdown(f"- [{item['title']}]({item['link']})")
     else:
         st.info("No Quora results found.")
 
-# === Footer ===
-st.markdown("---")
-st.markdown(
-    "<footer style='text-align: center; font-size: 14px;'>"
-    "Built with ❤️ by <a href='https://yourdomain.com' target='_blank'>YourName</a> | Powered by SerpAPI & OpenAI"
-    "</footer>",
-    unsafe_allow_html=True
-)
+# --- Footer ---
+st.markdown("""
+    <hr style="margin-top:3rem;margin-bottom:1rem;">
+    <footer style='text-align: center;'>
+        🚀 Built by <a href="https://yourdomain.com" target="_blank" style="color:#9b5de5;">YourBrand</a> | Powered by <strong>SerpAPI</strong> & <strong>OpenAI</strong>
+    </footer>
+""", unsafe_allow_html=True)
