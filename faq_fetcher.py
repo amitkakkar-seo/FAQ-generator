@@ -78,3 +78,72 @@ def fetch_reddit_quora_threads(keyword):
     except Exception as e:
         st.error(f"❌ Reddit/Quora Error: {str(e)}")
         return [], []
+# === Function to get long-tail and LSI keywords from SerpAPI ===
+def fetch_related_keywords(keyword, serpapi_key):
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "google",
+        "q": keyword,
+        "api_key": serpapi_key,
+        "hl": "en",
+        "gl": "us"
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    long_tail_keywords = []
+    lsi_keywords = []
+
+    # Extract from 'related_searches'
+    if 'related_searches' in data:
+        for item in data['related_searches']:
+            term = item.get("query")
+            if term:
+                if len(term.split()) >= 3:
+                    long_tail_keywords.append(term)
+                else:
+                    lsi_keywords.append(term)
+
+    return long_tail_keywords, lsi_keywords
+
+# === Streamlit UI ===
+st.set_page_config(page_title="Keyword Insights Tool", layout="centered", initial_sidebar_state="collapsed")
+st.markdown("""
+    <style>
+        body {
+            background-color: #0d1117;
+            color: white;
+        }
+        .css-1d391kg {color: white;}
+        .stTextInput>div>div>input {
+            background-color: #161b22;
+            color: white;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🔑 Long-Tail & LSI Keyword Suggestion Tool")
+st.write("Get content ideas based on real Google searches.")
+
+# Get secret from Streamlit cloud or local environment
+SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
+keyword = st.text_input("Enter a keyword:")
+
+if keyword:
+    with st.spinner("Fetching keyword suggestions..."):
+        long_tail, lsi = fetch_related_keywords(keyword, SERPAPI_KEY)
+
+    st.subheader("📌 Long-Tail Keywords")
+    if long_tail:
+        for kw in long_tail:
+            st.markdown(f"• {kw}")
+    else:
+        st.write("No long-tail keywords found.")
+
+    st.subheader("🔍 LSI Keywords")
+    if lsi:
+        for kw in lsi:
+            st.markdown(f"• {kw}")
+    else:
+        st.write("No LSI keywords found.")
