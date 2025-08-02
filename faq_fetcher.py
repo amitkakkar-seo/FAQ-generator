@@ -100,12 +100,29 @@ def fetch_related_keywords(keyword):
         }
         res = requests.get("https://serpapi.com/search", params=params)
         data = res.json()
-        related = [r.get("query") for r in data.get("related_searches", [])]
-        lsi_keywords = [r.get("title") for r in data.get("organic_results", []) if r.get("title")]
+
+        # People Also Search For
+        related = []
+        if 'related_searches' in data:
+            related = [item.get('query') for item in data['related_searches'] if item.get('query')]
+
+        # Long-tail & LSI Keywords from organic results (title and snippet)
+        lsi_keywords = []
+        if 'organic_results' in data:
+            for result in data['organic_results']:
+                if 'title' in result:
+                    lsi_keywords.append(result['title'])
+                if 'snippet' in result:
+                    lsi_keywords.append(result['snippet'])
+
+        # Clean and deduplicate
+        lsi_keywords = list(set(kw.strip() for kw in lsi_keywords if len(kw.strip().split()) > 2))[:10]  # Keep only long phrases
+
         return {
             "people_also_search_for": related[:10],
-            "lsi_keywords": lsi_keywords[:10]
+            "lsi_keywords": lsi_keywords
         }
+
     except Exception as e:
         st.error(f"❌ Related Keywords Error: {str(e)}")
         return {}
