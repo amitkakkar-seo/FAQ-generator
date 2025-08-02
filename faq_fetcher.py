@@ -1,107 +1,112 @@
-import streamlit as st
-from faq_fetcher import (
-    fetch_google_faqs,
-    fetch_chatgpt_faqs,
-    fetch_quora_faqs,
-    fetch_reddit_faqs,
-    fetch_ai_overview,
-    fetch_related_keywords
-)
+import requests
+import openai
+from bs4 import BeautifulSoup
+import os
 
-# ==== PAGE SETUP ====
-st.set_page_config(
-    page_title="FAQ & Keyword Explorer",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+openai.api_key = OPENAI_API_KEY
 
-# ==== CUSTOM CSS FOR DARK MODE + STYLING ====
-st.markdown("""
-    <style>
-        body {
-            background-color: #121212;
-            color: white;
-        }
-        .stApp {
-            background-color: #121212;
-            color: white;
-        }
-        .css-1d391kg, .css-ffhzg2 {
-            color: white !important;
-        }
-        .footer {
-            position: fixed;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            background-color: #1f1f1f;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            font-size: 13px;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #fbbf24;
-        }
-    </style>
-""", unsafe_allow_html=True)
 
-# ==== HEADER ====
-st.markdown('<div class="logo">🔍 FAQ & Keyword Explorer</div>', unsafe_allow_html=True)
+def fetch_google_faqs(keyword):
+    params = {
+        "engine": "google",
+        "q": keyword,
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
+    }
+    response = requests.get("https://serpapi.com/search", params=params)
+    data = response.json()
+    faqs = []
+    if "related_questions" in data:
+        faqs = [q["question"] for q in data["related_questions"] if "question" in q]
+    return faqs
 
-# ==== MAIN UI ====
-keyword = st.text_input("Enter a keyword to analyze:", "AI image generation")
 
-if keyword:
-    col1, col2 = st.columns(2)
+def fetch_chatgpt_faqs(keyword):
+    prompt = f"Generate a list of 10 frequently asked questions about '{keyword}'."
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=300,
+        )
+        return [
+            line.strip("-• ").strip()
+            for line in response.choices[0].message.content.strip().split("\n")
+            if line.strip()
+        ]
+    except Exception as e:
+        return [f"❌ ChatGPT Error: {str(e)}"]
 
-    with col1:
-        st.subheader("📌 Google FAQs")
-        google_faqs = fetch_google_faqs(keyword)
-        for q in google_faqs:
-            st.markdown(f"- {q}")
 
-        st.subheader("🧠 ChatGPT FAQs")
-        chatgpt_faqs = fetch_chatgpt_faqs(keyword)
-        for q in chatgpt_faqs:
-            st.markdown(f"- {q}")
+def fetch_ai_overview(keyword):
+    params = {
+        "engine": "google",
+        "q": keyword,
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
+    }
+    response = requests.get("https://serpapi.com/search", params=params).json()
+    results = []
+    if "answer_box" in response:
+        answer = response["answer_box"].get("answer") or response["answer_box"].get("snippet")
+        if answer:
+            results.append(answer)
+    elif "organic_results" in response:
+        for result in response["organic_results"][:2]:
+            if "snippet" in result:
+                results.append(result["snippet"])
+    return results
 
-        st.subheader("📚 AI Overview (SGE)")
-        ai_overview = fetch_ai_overview(keyword)
-        for item in ai_overview:
-            st.markdown(f"- {item}")
 
-    with col2:
-        st.subheader("💬 Reddit & Quora Threads")
-        reddit = fetch_reddit_faqs(keyword)
-        quora = fetch_quora_faqs(keyword)
-        if reddit:
-            st.markdown("**Reddit:**")
-            for r in reddit:
-                st.markdown(f"- {r}")
-        if quora:
-            st.markdown("**Quora:**")
-            for q in quora:
-                st.markdown(f"- {q}")
+def fetch_quora_faqs(keyword):
+    try:
+        search_url = f"https://www.quora.com/search?q={keyword.replace(' ', '%20')}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        return list(
+            set(
+                text.strip()
+                for a in soup.find_all("a", href=True)
+                if (text := a.get_text(strip=True)) and "?" in text and len(text) < 100
+            )
+        )[:10]
+    except:
+        return []
 
-        st.subheader("🔑 Related & LSI Keywords")
-        keyword_data = fetch_related_keywords(keyword)
-        if keyword_data:
-            st.markdown("**People also search for:**")
-            for item in keyword_data['people_also_search_for']:
-                st.markdown(f"- {item}")
 
-            st.markdown("**Long-tail & LSI Keywords:**")
-            for item in keyword_data['lsi_keywords']:
-                st.markdown(f"- {item}")
+def fetch_reddit_faqs(keyword):
+    try:
+        search_url = f"https://www.reddit.com/search/?q={keyword.replace(' ', '%20')}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        return list(
+            set(
+                text.strip()
+                for a in soup.find_all("a", href=True)
+                if (text := a.get_text(strip=True)) and "?" in text and len(text) < 120
+            )
+        )[:10]
+    except:
+        return []
 
-# ==== FOOTER ====
-st.markdown("""
-    <div class="footer">
-        🚀 Built with ❤️ by YourName | Streamlit SaaS App
-    </div>
-""", unsafe_allow_html=True)
+
+def fetch_related_keywords(keyword):
+    params = {
+        "engine": "google",
+        "q": keyword,
+        "api_key": SERPAPI_KEY,
+        "location": "United States"
+    }
+    response = requests.get("https://serpapi.com/search", params=params)
+    data = response.json()
+    people_also = [item["query"] for item in data.get("related_searches", [])]
+    lsi_keywords = [item.get("title") for item in data.get("organic_results", []) if "title" in item]
+    return {
+        "people_also_search_for": people_also[:10],
+        "lsi_keywords": lsi_keywords[:10],
+    }
