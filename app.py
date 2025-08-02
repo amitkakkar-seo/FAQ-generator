@@ -1,57 +1,80 @@
-import requests
-import openai
-from bs4 import BeautifulSoup
 import streamlit as st
+from faq_fetcher import fetch_google_faqs, fetch_chatgpt_faqs, fetch_ai_overview
 
-SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-openai.api_key = OPENAI_API_KEY
+# === PAGE CONFIG ===
+st.set_page_config(page_title="AI FAQ Generator", page_icon="💡", layout="wide")
 
-def fetch_google_faqs(keyword):
-    params = {
-        "engine": "google",
-        "q": keyword,
-        "api_key": SERPAPI_KEY,
-        "location": "United States"
+# === CUSTOM STYLING ===
+st.markdown("""
+    <style>
+    .top-banner {
+        background-color: #0F1C2E;
+        color: white;
+        padding: 1rem 2rem;
+        font-size: 20px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    response = requests.get("https://serpapi.com/search", params=params)
-    data = response.json()
-    faqs = []
-    if "related_questions" in data:
-        for q in data["related_questions"]:
-            faqs.append(q.get("question"))
-    return faqs
+    .result-card {
+        background: #F9FAFB;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border: 1px solid #e1e1e1;
+    }
+    .footer {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #888;
+        padding: 2rem 0 1rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-def fetch_chatgpt_faqs(keyword):
-    try:
-        prompt = f"Generate a list of 10 frequently asked questions about '{keyword}'."
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=300
-        )
-        content = response.choices[0].message.content
-        faqs = [q.strip("•- ").strip() for q in content.strip().split("\n") if q.strip()]
-        return faqs
-    except Exception as e:
-        st.error(f"❌ ChatGPT FAQ error: {e}")
-        return []
+st.markdown("""
+    <div class="top-banner">
+        <div>💡 <span style="color:#00c7ff;">AI FAQ Generator</span></div>
+        <div><a href="https://yourdomain.com" style="color:white;text-decoration:none;">Docs</a></div>
+    </div>
+""", unsafe_allow_html=True)
 
-def fetch_ai_overview(keyword):
-    try:
-        params = {
-            "engine": "google",
-            "q": keyword,
-            "api_key": SERPAPI_KEY,
-            "location": "United States",
-            "ai_overview": "true"
-        }
-        response = requests.get("https://serpapi.com/search", params=params)
-        data = response.json()
-        ai_text = data.get("answer_box", {}).get("answer") or \
-                  data.get("ai_overview", {}).get("text") or \
-                  "⚠️ No AI Overview found."
-        return ai_text
-    except Exception as e:
-        return f"❌ AI Overview error: {e}"
+# === MAIN SEARCH ===
+st.markdown("### 🔍 Enter your keyword below")
+keyword = st.text_input("", placeholder="e.g. Best AI tools for SEO", label_visibility="collapsed")
+
+if keyword:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 📋 People Also Ask (Google)")
+        google_faqs = fetch_google_faqs(keyword)
+        if google_faqs:
+            for faq in google_faqs:
+                st.markdown(f'<div class="result-card">• {faq}</div>', unsafe_allow_html=True)
+        else:
+            st.warning("No results from Google.")
+
+        st.markdown("#### 🤖 ChatGPT FAQs")
+        chatgpt_faqs = fetch_chatgpt_faqs(keyword)
+        if chatgpt_faqs:
+            for faq in chatgpt_faqs:
+                st.markdown(f'<div class="result-card">• {faq}</div>', unsafe_allow_html=True)
+        else:
+            st.warning("ChatGPT could not generate FAQs.")
+
+    with col2:
+        st.markdown("#### 🧠 Google AI Overview")
+        ai_answer = fetch_ai_overview(keyword)
+        if ai_answer:
+            st.markdown(f'<div class="result-card">{ai_answer}</div>', unsafe_allow_html=True)
+        else:
+            st.info("No AI Overview available.")
+
+# === FOOTER ===
+st.markdown("""
+    <div class="footer">
+        Built with ❤️ using Streamlit | © 2025 YourBrand
+    </div>
+""", unsafe_allow_html=True)
