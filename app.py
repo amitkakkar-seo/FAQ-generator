@@ -1,65 +1,92 @@
 import streamlit as st
-import openai
-from faq_fetcher import (
-    fetch_google_faqs,
-    fetch_chatgpt_faqs,
-    fetch_reddit_questions,
-    fetch_quora_questions
-)
+from faq_fetcher import fetch_google_faqs, fetch_chatgpt_faqs, fetch_ai_overview
 
-# Load API Keys from Streamlit Secrets
-SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-openai.api_key = OPENAI_API_KEY
-openai.api_key = OPENAI_API_KEY
+# === PAGE SETTINGS ===
+st.set_page_config(page_title="AI FAQ Generator", page_icon="💡", layout="wide")
 
-st.set_page_config(page_title="FAQ Finder AI", layout="centered")
+# === CUSTOM CSS ===
+st.markdown("""
+    <style>
+    /* Top bar */
+    .top-banner {
+        background-color: #0F1C2E;
+        color: white;
+        padding: 1rem 2rem;
+        font-size: 20px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-# --- UI Header ---
-st.markdown(
-    '''
-    <div style='text-align: center; padding: 1rem;'>
-        <img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png' width='60'/>
-        <h2 style='margin-bottom:0;'>FAQ Finder AI 🔍</h2>
-        <p style='color:gray;'>Find real questions people ask on Google, ChatGPT, Reddit, and Quora.</p>
+    .search-container input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+        margin-top: 1rem;
+    }
+
+    .result-card {
+        background: #F9FAFB;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border: 1px solid #e1e1e1;
+    }
+
+    .footer {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #888;
+        padding: 2rem 0 1rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# === TOP NAV ===
+st.markdown("""
+    <div class="top-banner">
+        <div>💡 <span style="color:#00c7ff;">AI FAQ Generator</span></div>
+        <div><a href="https://yourdomain.com" style="color:white;text-decoration:none;">Docs</a></div>
     </div>
-    ''',
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
-# --- Input ---
-keyword = st.text_input("Enter a topic or keyword")
+# === SEARCH BAR ===
+st.markdown("### 🔍 Enter your keyword below")
+keyword = st.text_input("", placeholder="e.g. Best AI tools for SEO", label_visibility="collapsed")
 
 if keyword:
-    with st.spinner("Fetching questions..."):
-        google_faqs = fetch_google_faqs(keyword, SERPAPI_KEY)
+    col1, col2 = st.columns(2)
+
+    # === LEFT SIDE: FAQ PANELS ===
+    with col1:
+        st.markdown("#### 📋 People Also Ask (Google)")
+        google_faqs = fetch_google_faqs(keyword)
+        if google_faqs:
+            for faq in google_faqs:
+                st.markdown(f'<div class="result-card">• {faq}</div>', unsafe_allow_html=True)
+        else:
+            st.warning("No 'People Also Ask' found.")
+
+        st.markdown("#### 🤖 ChatGPT FAQs")
         chatgpt_faqs = fetch_chatgpt_faqs(keyword)
-        reddit_faqs = fetch_reddit_questions(keyword)
-        quora_faqs = fetch_quora_questions(keyword)
+        if chatgpt_faqs:
+            for faq in chatgpt_faqs:
+                st.markdown(f'<div class="result-card">• {faq}</div>', unsafe_allow_html=True)
+        else:
+            st.warning("ChatGPT could not generate FAQs.")
 
-    st.markdown("### 🟢 Google FAQs")
-    for q in google_faqs:
-        st.markdown(f"- {q}")
+    # === RIGHT SIDE: AI OVERVIEW PANEL ===
+    with col2:
+        st.markdown("#### 🧠 Google AI Overview")
+        overview = fetch_ai_overview(keyword)
+        st.markdown(f'<div class="result-card">{overview}</div>', unsafe_allow_html=True)
 
-    st.markdown("### 🤖 ChatGPT FAQs")
-    for q in chatgpt_faqs:
-        st.markdown(f"- {q}")
-
-    st.markdown("### 🔴 Reddit Questions")
-    for q in reddit_faqs:
-        st.markdown(f"- {q}")
-
-    st.markdown("### 🔵 Quora Questions")
-    for q in quora_faqs:
-        st.markdown(f"- {q}")
-
-# --- Footer ---
-st.markdown(
-    '''
-    <hr>
-    <div style='text-align: center; color: gray; font-size: 14px;'>
-        Built with ❤️ by YourName • © 2025
+# === FOOTER ===
+st.markdown("""
+    <div class="footer">
+        Built with ❤️ using Streamlit | © 2025 YourBrand
     </div>
-    ''',
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
